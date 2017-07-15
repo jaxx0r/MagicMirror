@@ -203,22 +203,7 @@ var Module = Class.extend({
 	 * argument callback function - Function called when done.
 	 */
 	loadStyles: function (callback) {
-		var self = this;
-		var styles = this.getStyles();
-
-		var loadNextStyle = function () {
-			if (styles.length > 0) {
-				var nextStyle = styles[0];
-				Loader.loadFile(nextStyle, self, function () {
-					styles = styles.slice(1);
-					loadNextStyle();
-				});
-			} else {
-				callback();
-			}
-		};
-
-		loadNextStyle();
+		this.loadDependencies("getStyles", callback);
 	},
 
 	/* loadScripts()
@@ -227,22 +212,32 @@ var Module = Class.extend({
 	 * argument callback function - Function called when done.
 	 */
 	loadScripts: function (callback) {
-		var self = this;
-		var scripts = this.getScripts();
+		this.loadDependencies("getScripts", callback);
+	},
 
-		var loadNextScript = function () {
-			if (scripts.length > 0) {
-				var nextScript = scripts[0];
-				Loader.loadFile(nextScript, self, function () {
-					scripts = scripts.slice(1);
-					loadNextScript();
+	/* loadDependencies(funcName, callback)
+	 * Helper method to load all dependencies.
+	 *
+	 * argument funcName string - Function name to call to get scripts or styles.
+	 * argument callback function - Function called when done.
+	 */
+	loadDependencies: function (funcName, callback) {
+		var self = this;
+		var dependencies = this[funcName]();
+
+		var loadNextDependency = function () {
+			if (dependencies.length > 0) {
+				var nextDependency = dependencies[0];
+				Loader.loadFile(nextDependency, self, function () {
+					dependencies = dependencies.slice(1);
+					loadNextDependency();
 				});
 			} else {
 				callback();
 			}
 		};
 
-		loadNextScript();
+		loadNextDependency();
 	},
 
 	/* loadScripts()
@@ -277,14 +272,18 @@ var Module = Class.extend({
 		}
 	},
 
-	/* translate(key, defaultValue)
-	 * Request the translation for a given key.
+	/* translate(key, defaultValueOrVariables, defaultValue)
+	 * Request the translation for a given key with optional variables and default value.
 	 *
-	 * argument key string - The key of the string to translage
-   * argument defaultValue string - The default value if no translation was found. (Optional)
+	 * argument key string - The key of the string to translate
+   * argument defaultValueOrVariables string/object - The default value or variables for translating. (Optional)
+   * argument defaultValue string - The default value with variables. (Optional)
 	 */
-	translate: function (key, defaultValue) {
-		return Translator.translate(this, key) || defaultValue || "";
+	translate: function (key, defaultValueOrVariables, defaultValue) {
+		if(typeof defaultValueOrVariables === "object") {
+			return Translator.translate(this, key, defaultValueOrVariables) || defaultValue || "";
+		}
+		return Translator.translate(this, key) || defaultValueOrVariables || "";
 	},
 
 	/* updateDom(speed)
@@ -415,3 +414,11 @@ Module.register = function (name, moduleDefinition) {
 	Log.log("Module registered: " + name);
 	Module.definitions[name] = moduleDefinition;
 };
+
+if (typeof exports != "undefined") { // For testing purpose only
+	// A good a idea move the function cmpversions a helper file.
+	// It's used into other side.
+	exports._test = {
+		cmpVersions: cmpVersions
+	}
+}
